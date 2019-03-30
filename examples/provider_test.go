@@ -66,6 +66,7 @@ func startServer() {
 	mux.HandleFunc("/foobar", func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Add("Content-Type", "application/json")
 		fmt.Println("Request headers", req.Header)
+		w.WriteHeader(http.StatusOK)
 		fmt.Fprintf(w, fmt.Sprintf(`{"name":"%s", "lastName": "jones"}`, name))
 
 		// Break the API by replacing the above and uncommenting one of these

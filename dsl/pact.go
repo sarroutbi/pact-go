@@ -194,7 +194,6 @@ func (p *Pact) Setup(startMockServer bool) *Pact {
 			"--pact-file-write-mode",
 			p.PactFileWriteMode,
 		}
-
 		p.Server = p.pactClient.StartServer(args, port)
 	}
 
@@ -244,6 +243,47 @@ func (p *Pact) Verify(integrationTest func() error) error {
 	}
 
 	mockServer := &MockService{
+		BaseURL:  fmt.Sprintf("http://%s:%d", p.Host, p.Server.Port),
+		Consumer: p.Consumer,
+		Provider: p.Provider,
+	}
+
+	for _, interaction := range p.Interactions {
+		err := mockServer.AddInteraction(interaction)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Run the integration test
+	err := integrationTest()
+	if err != nil {
+		return err
+	}
+
+	// Run Verification Process
+	err = mockServer.Verify()
+	if err != nil {
+		return err
+	}
+
+	// Clear out interations
+	p.Interactions = make([]*Interaction, 0)
+
+	return mockServer.DeleteInteractions()
+}
+
+// Verify runs the current test case against a Mock Service.
+// Will cleanup interactions between tests within a suite.
+func (p *Pact) VerifyHttp2(integrationTest func() error) error {
+	p.Setup(true)
+	log.Println("[DEBUG] pact verify")
+	// Check if we are verifying messages or if we actually have interactions
+	if len(p.Interactions) == 0 {
+		return errors.New("there are no interactions to be verified")
+	}
+
+	mockServer := &MockServiceHttp2{
 		BaseURL:  fmt.Sprintf("http://%s:%d", p.Host, p.Server.Port),
 		Consumer: p.Consumer,
 		Provider: p.Provider,

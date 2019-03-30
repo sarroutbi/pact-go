@@ -94,7 +94,6 @@ func (p *PactClient) StartServer(args []string, port int) *types.MockServer {
 	args = append(args, []string{"--port", strconv.Itoa(port)}...)
 	svc := p.pactMockSvcManager.NewService(args)
 	cmd := svc.Start()
-
 	waitForPort(port, p.getNetworkInterface(), p.Address, p.TimeoutDuration,
 		fmt.Sprintf(`Timed out waiting for Mock Server to start on port %d - are you sure it's running?`, port))
 
