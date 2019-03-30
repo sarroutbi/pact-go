@@ -2,6 +2,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"fmt"
 	"log"
 	"net/http"
@@ -9,12 +10,13 @@ import (
 	"testing"
 
 	"github.com/pact-foundation/pact-go/dsl"
+	"golang.org/x/net/http2"
 )
 
 // Example Pact: How to run me!
 // 1. cd <pact-go>/examples
-// 2. go test -v -run TestConsumer
-func TestConsumer(t *testing.T) {
+// 2. go test -v -run TestHttp2Consumer
+func TestHttp2Consumer(t *testing.T) {
 	type User struct {
 		Name     string `json:"name" pact:"example=billy"`
 		LastName string `json:"lastName" pact:"example=sampson"`
@@ -30,8 +32,8 @@ func TestConsumer(t *testing.T) {
 
 	// Pass in test case
 	var test = func() error {
-		u := fmt.Sprintf("http://localhost:%d/foobar", pact.Server.Port)
-		req, err := http.NewRequest("GET", u, strings.NewReader(`{"name":"billy"}`))
+		uri := fmt.Sprintf("http://localhost:%d/foobar", pact.Server.Port)
+		req, err := http.NewRequest("GET", uri, strings.NewReader(`{"name":"billy"}`))
 
 		// NOTE: by default, request bodies are expected to be sent with a Content-Type
 		// of application/json. If you don't explicitly set the content-type, you
@@ -42,7 +44,16 @@ func TestConsumer(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		if _, err = http.DefaultClient.Do(req); err != nil {
+
+		client := http.Client{
+			// InsecureTLSDial is temporary and will likely be
+			// replaced by a different API later.
+			Transport: &http2.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			},
+		}
+
+		if _, err = client.Do(req); err != nil {
 			return err
 		}
 
@@ -69,7 +80,7 @@ func TestConsumer(t *testing.T) {
 		})
 
 	// Verify
-	if err := pact.Verify(test); err != nil {
+	if err := pact.VerifyHttp2(test); err != nil {
 		log.Fatalf("Error on Verify: %v", err)
 	}
 
